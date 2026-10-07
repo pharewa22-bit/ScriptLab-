@@ -1,0 +1,6 @@
+{
+  "name": "ScriptLab - มัลติมีเดียเพื่อการเรียนรู้การเขียนบท",
+  "description": "เว็บแอปพลิเคชันมัลติมีเดียเพื่อการเรียนรู้การเขียนบทภาพยนตร์และสื่อวิดีโอ พร้อมห้องฝึกเขียน คลังตัวอย่างบท และเครื่องมือตรวจทานบทสคริปต์",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
