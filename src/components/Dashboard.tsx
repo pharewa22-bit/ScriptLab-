@@ -19,10 +19,13 @@ import {
   Columns3,
   Layers,
   Video,
-  Mic
+  Mic,
+  BookMarked,
+  Mail
 } from 'lucide-react';
 import { Lesson, NavigationTab } from '../types/script';
 import { audioEngine } from '../utils/audioPlayer';
+import { CREATOR_INFO } from '../data/referencesData';
 
 interface DashboardProps {
   lessons: Lesson[];
@@ -528,6 +531,50 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <span>เริ่มเขียนภารกิจนี้ใน Studio</span>
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Academic References & Creator Contact Highlight Banner */}
+      <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 dark:from-slate-800 dark:via-slate-800 dark:to-slate-800/90 rounded-3xl border border-amber-300/80 dark:border-slate-700 p-6 md:p-8 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6 transition-all">
+        <div className="flex items-start sm:items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/20">
+            <BookMarked className="w-7 h-7" />
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/70 px-2.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
+                แหล่งอ้างอิงวิชาการ & ข้อมูลผู้จัดทำ
+              </span>
+              <span className="text-xs text-slate-400">·</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">Syd Field · Robert McKee · Blake Snyder · WGA/BEA AV Standard</span>
+            </div>
+
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+              แหล่งอ้างอิงงานและที่อยู่ติดต่อผู้ทำแอพ
+            </h3>
+
+            <p className="text-xs text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+              พัฒนาขึ้นเพื่อเป็นสื่อนวัตกรรมการศึกษา หากมีข้อสงสัยหรือข้อเสนอแนะ ติดต่อผู้จัดทำได้ที่{' '}
+              <a 
+                href={`mailto:${CREATOR_INFO.email}`} 
+                className="font-mono font-bold text-amber-700 dark:text-amber-400 hover:underline inline-flex items-center gap-1 select-all"
+              >
+                <Mail className="w-3 h-3" />
+                {CREATOR_INFO.email}
+              </a>
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 shrink-0 w-full sm:w-auto">
+          <button
+            onClick={() => onNavigate('references')}
+            className="w-full sm:w-auto px-5 py-2.5 bg-slate-900 dark:bg-amber-500 hover:bg-slate-800 dark:hover:bg-amber-400 text-white dark:text-slate-950 font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <BookMarked className="w-4 h-4" />
+            <span>ดูรายการอ้างอิงและติดต่อ</span>
+          </button>
         </div>
       </div>
     </div>

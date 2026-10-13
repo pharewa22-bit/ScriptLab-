@@ -10,9 +10,12 @@ import {
   Clapperboard,
   ChevronRight,
   GraduationCap,
-  Columns3
+  Columns3,
+  BookMarked,
+  Mail
 } from 'lucide-react';
 import { NavigationTab } from '../types/script';
+import { CREATOR_INFO } from '../data/referencesData';
 
 interface SidebarProps {
   currentTab: NavigationTab;
@@ -70,6 +73,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       numberLabel: '4',
       icon: <CheckCircle2 className="w-5 h-5" />,
       badge: 'Linter',
+    },
+    {
+      id: 'references',
+      label: 'แหล่งอ้างอิง & ติดต่อ',
+      numberLabel: '5',
+      icon: <BookMarked className="w-5 h-5" />,
+      badge: 'อ้างอิง/ติดต่อ',
     },
   ];
 
@@ -190,8 +200,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </div>
 
-          <div className="text-center text-[11px] text-slate-400 dark:text-slate-500">
-            ScriptLab v1.2 · มัลติมีเดียการเขียนบท
+          <div className="p-3 bg-amber-50/70 dark:bg-amber-950/40 rounded-xl border border-amber-200/80 dark:border-amber-900/50 space-y-1.5 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-amber-900 dark:text-amber-300 flex items-center gap-1 text-[11px]">
+                <Mail className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                ติดต่อผู้ทำแอพ
+              </span>
+              <button
+                onClick={() => onSelectTab('references')}
+                className="text-[10px] text-amber-700 dark:text-amber-400 font-bold hover:underline cursor-pointer"
+              >
+                ดูแหล่งอ้างอิง →
+              </button>
+            </div>
+            <a 
+              href={`mailto:${CREATOR_INFO.email}`} 
+              className="text-[11px] font-mono text-slate-700 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400 block truncate"
+              title="ส่งอีเมลหาผู้พัฒนา"
+            >
+              {CREATOR_INFO.email}
+            </a>
+          </div>
+
+          <div className="text-center text-[10px] text-slate-400 dark:text-slate-500">
+            ScriptLab v1.3 · เพื่อการศึกษาและการเรียนรู้
           </div>
         </div>
       </aside>

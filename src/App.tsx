@@ -17,7 +17,9 @@ import {
   GraduationCap,
   Sun,
   Moon,
-  Columns3
+  Columns3,
+  Mail,
+  BookMarked
 } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
@@ -26,7 +28,9 @@ import { ThreeColumnUnitView } from './components/ThreeColumnUnitView';
 import { StudioView } from './components/StudioView';
 import { LibraryView } from './components/LibraryView';
 import { ReviewerView } from './components/ReviewerView';
+import { ReferencesView } from './components/ReferencesView';
 import { INITIAL_LESSONS } from './data/learningContent';
+import { CREATOR_INFO } from './data/referencesData';
 import { Lesson, NavigationTab } from './types/script';
 
 export default function App() {
@@ -173,6 +177,12 @@ export default function App() {
           >
             ตรวจทานบท
           </button>
+          <button 
+            onClick={() => setCurrentTab('references')} 
+            className={`hover:text-amber-600 dark:hover:text-amber-400 transition-colors cursor-pointer flex items-center gap-1 ${currentTab === 'references' ? 'text-amber-600 dark:text-amber-400 font-bold' : ''}`}
+          >
+            <span>แหล่งอ้างอิง & ติดต่อ</span>
+          </button>
         </nav>
 
         {/* Zone 3: 1-2 primary actions + Day/Night Theme Toggle */}
@@ -266,19 +276,51 @@ export default function App() {
                 onEditInStudio={handleEditInStudioFromReviewer}
               />
             )}
+
+            {currentTab === 'references' && (
+              <ReferencesView
+                onNavigateTab={setCurrentTab}
+              />
+            )}
           </div>
 
-          {/* Minimalist Educational Footer */}
-          <footer className="border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-4 text-xs text-slate-500 dark:text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2 transition-colors">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-slate-800 dark:text-slate-200">ScriptLab</span>
+          {/* Educational & Creator Contact Footer */}
+          <footer className="border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-4 text-xs text-slate-500 dark:text-slate-400 flex flex-col md:flex-row items-center justify-between gap-3 transition-colors">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                ScriptLab
+              </span>
               <span>·</span>
               <span>มัลติมีเดียเพื่อการเรียนรู้การเขียนบทภาพยนตร์และบทวิดีโอ 3 คอลัมน์</span>
-            </div>
-            <div className="flex items-center gap-4 text-slate-400 dark:text-slate-500 text-[11px]">
-              <span>มาตรฐานฟอร์แมต Courier 12pt & 3-Column AV Script</span>
               <span>·</span>
-              <span>โหมด {isDarkMode ? 'กลางคืน (Night)' : 'กลางวัน (Day)'}</span>
+              <button
+                onClick={() => setCurrentTab('references')}
+                className="text-amber-600 dark:text-amber-400 font-semibold hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <BookMarked className="w-3.5 h-3.5" />
+                <span>แหล่งอ้างอิงวิชาการ</span>
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4 text-[11px]">
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-900/60 text-amber-900 dark:text-amber-300">
+                <Mail className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                <span className="font-semibold">ติดต่อผู้ทำแอพ:</span>
+                <a 
+                  href={`mailto:${CREATOR_INFO.email}`} 
+                  className="font-mono font-bold hover:underline select-all text-slate-900 dark:text-white"
+                  title="ส่งอีเมลติดต่อผู้ทำแอพ"
+                >
+                  {CREATOR_INFO.email}
+                </a>
+              </div>
+
+              <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500">
+                <span>Courier 12pt & 3-Column AV</span>
+                <span>·</span>
+                <span>โหมด {isDarkMode ? 'กลางคืน (Night)' : 'กลางวัน (Day)'}</span>
+              </div>
             </div>
           </footer>
         </main>

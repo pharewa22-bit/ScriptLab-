@@ -1,4 +1,4 @@
-export type NavigationTab = 'dashboard' | 'lessons' | 'three-column' | 'studio' | 'library' | 'reviewer';
+export type NavigationTab = 'dashboard' | 'lessons' | 'three-column' | 'studio' | 'library' | 'reviewer' | 'references';
 
 export interface Lesson {
   id: string;
