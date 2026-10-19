@@ -12,7 +12,10 @@ import {
   GraduationCap,
   Columns3,
   BookMarked,
-  Mail
+  Mail,
+  X,
+  Menu,
+  PanelLeftClose
 } from 'lucide-react';
 import { NavigationTab } from '../types/script';
 import { CREATOR_INFO } from '../data/referencesData';
@@ -23,6 +26,8 @@ interface SidebarProps {
   overallProgress: number;
   isOpenMobile: boolean;
   onCloseMobile: () => void;
+  isDesktopOpen?: boolean;
+  onToggleDesktop?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -31,6 +36,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   overallProgress,
   isOpenMobile,
   onCloseMobile,
+  isDesktopOpen = true,
+  onToggleDesktop,
 }) => {
   const menuItems: { id: NavigationTab; label: string; numberLabel: string; icon: React.ReactNode; badge?: string }[] = [
     {
@@ -88,31 +95,50 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Mobile Backdrop */}
       {isOpenMobile && (
         <div 
-          className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-40 lg:hidden"
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-40 lg:hidden cursor-pointer transition-opacity"
           onClick={onCloseMobile}
+          aria-label="คลิกเพื่อปิดแถบเมนู"
         />
       )}
 
       <aside className={`
         fixed top-0 bottom-0 left-0 z-50 w-72 bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 flex flex-col justify-between
-        transition-transform duration-200 ease-in-out
-        lg:translate-x-0 ${isOpenMobile ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'}
+        transition-all duration-300 ease-in-out
+        ${isDesktopOpen ? 'lg:translate-x-0' : 'lg:-translate-x-full'}
+        ${isOpenMobile ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
       `}>
-        {/* Brand Lockup */}
+        {/* Brand Lockup + Close/Collapse Button */}
         <div>
-          <div className="p-6 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+          <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-md shadow-amber-500/20">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-md shadow-amber-500/20 shrink-0">
                 <Clapperboard className="w-5 h-5" />
               </div>
               <div>
-                <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+                <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
                   ScriptLab
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 </span>
-                <p className="text-xs text-slate-400 dark:text-slate-400 font-medium">Screenplay Learning Lab</p>
+                <p className="text-[11px] text-slate-400 dark:text-slate-400 font-medium">Screenplay Learning Lab</p>
               </div>
             </div>
+
+            {/* Close / Collapse Toggle Button right in the sidebar */}
+            <button
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+                  onToggleDesktop?.();
+                } else {
+                  onCloseMobile();
+                }
+              }}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              title="ปิดแถบเมนู (Close Sidebar)"
+              aria-label="ปิดแถบเมนู"
+            >
+              <X className="w-5 h-5 lg:hidden" />
+              <PanelLeftClose className="w-5 h-5 hidden lg:block" />
+            </button>
           </div>
 
           {/* Navigation Items */}

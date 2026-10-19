@@ -36,10 +36,22 @@ import { Lesson, NavigationTab } from './types/script';
 export default function App() {
   const [currentTab, setCurrentTab] = useState<NavigationTab>('dashboard');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
+  const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState<boolean>(true);
   const [lessons, setLessons] = useState<Lesson[]>(INITIAL_LESSONS);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>('lesson-1');
   const [studioDraft, setStudioDraft] = useState<string>('');
   const [reviewerDraft, setReviewerDraft] = useState<string>('');
+
+  // Close mobile sidebar on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsMobileSidebarOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Day & Night Mode State
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -61,6 +73,15 @@ export default function App() {
 
   const toggleTheme = () => {
     setIsDarkMode(prev => !prev);
+  };
+
+  // Toggle sidebar for both mobile drawer and desktop collapse
+  const handleToggleSidebar = () => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+      setIsDesktopSidebarOpen(prev => !prev);
+    } else {
+      setIsMobileSidebarOpen(prev => !prev);
+    }
   };
 
   // Calculate overall learning progress
@@ -118,14 +139,15 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col antialiased transition-colors duration-200">
       {/* Universal Top Bar Contract: Brand Zone — Nav Links — Primary Action */}
       <header className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-4 sm:px-8 py-3 flex items-center justify-between transition-colors">
-        {/* Zone 1: Brand title, single element */}
+        {/* Zone 1: Brand title & Universal Hamburger Toggle */}
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-            className="p-2 -ml-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 lg:hidden cursor-pointer"
-            aria-label="เปิดเมนูนำทาง"
+            onClick={handleToggleSidebar}
+            className="p-2 -ml-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center justify-center"
+            title="เปิด/ปิด แถบเมนูด้านข้าง (Toggle Sidebar)"
+            aria-label="เปิดปิดเมนูนำทาง"
           >
-            {isMobileSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            <Menu className="w-5 h-5" />
           </button>
 
           <a 
@@ -221,14 +243,19 @@ export default function App() {
         {/* Left Sidebar */}
         <Sidebar
           currentTab={currentTab}
-          onSelectTab={setCurrentTab}
+          onSelectTab={(tab) => {
+            setCurrentTab(tab);
+            setIsMobileSidebarOpen(false);
+          }}
           overallProgress={overallProgressPercent}
           isOpenMobile={isMobileSidebarOpen}
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
+          isDesktopOpen={isDesktopSidebarOpen}
+          onToggleDesktop={() => setIsDesktopSidebarOpen(prev => !prev)}
         />
 
-        {/* Center Main Stage Area (with padding left for desktop sidebar) */}
-        <main className="flex-1 lg:pl-72 w-full min-w-0 flex flex-col justify-between">
+        {/* Center Main Stage Area (with responsive padding left for desktop sidebar) */}
+        <main className={`flex-1 ${isDesktopSidebarOpen ? 'lg:pl-72' : 'lg:pl-0'} w-full min-w-0 flex flex-col justify-between transition-all duration-300 ease-in-out`}>
           <div className="p-4 sm:p-6 lg:p-8 flex-1">
             {currentTab === 'dashboard' && (
               <Dashboard

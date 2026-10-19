@@ -34,6 +34,7 @@ export const ReferencesView: React.FC<ReferencesViewProps> = ({ onNavigateTab })
   const [inquirySubject, setInquirySubject] = useState<string>('สอบถามเรื่องการใช้งาน / ข้อเสนอแนะ ScriptLab');
   const [inquiryMessage, setInquiryMessage] = useState<string>('');
   const [inquirySubmitted, setInquirySubmitted] = useState<boolean>(false);
+  const [inquiryError, setInquiryError] = useState<string>('');
 
   // Copy email to clipboard
   const handleCopyEmail = () => {
@@ -47,10 +48,11 @@ export const ReferencesView: React.FC<ReferencesViewProps> = ({ onNavigateTab })
   const handleSubmitInquiry = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inquiryName.trim() || !inquiryMessage.trim()) {
-      alert('กรุณากรอกชื่อและข้อความที่ต้องการติดต่อ');
+      setInquiryError('กรุณากรอกชื่อและข้อความที่ต้องการติดต่อให้ครบถ้วน');
       return;
     }
 
+    setInquiryError('');
     setInquirySubmitted(true);
     audioEngine.playChime(880, 'triangle', 0.3);
 
@@ -268,6 +270,13 @@ export const ReferencesView: React.FC<ReferencesViewProps> = ({ onNavigateTab })
                   className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-500 resize-y"
                 />
               </div>
+
+              {inquiryError && (
+                <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs flex items-center gap-2">
+                  <span className="font-bold">⚠️</span>
+                  <span>{inquiryError}</span>
+                </div>
+              )}
 
               <button
                 type="submit"
