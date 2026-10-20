@@ -10,9 +10,10 @@ import {
   Eye, 
   Loader2,
   CheckCircle2,
-  Film,
   Sparkles,
-  Info
+  Info,
+  Layers,
+  AlertCircle
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -37,7 +38,9 @@ export const ExportScriptModal: React.FC<ExportScriptModalProps> = ({
   const [pdfProgress, setPdfProgress] = useState<string>('');
   const [pdfError, setPdfError] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'export' | 'preview'>('export');
-  const printContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Dedicated ref for the offscreen rendering container (used by html2canvas)
+  const pdfRenderRef = useRef<HTMLDivElement>(null);
 
   if (!isOpen) return null;
 
@@ -111,19 +114,32 @@ export const ExportScriptModal: React.FC<ExportScriptModalProps> = ({
 
   // High-Quality Thai PDF Generation using html2canvas & jsPDF
   const handleDownloadPdf = async () => {
-    if (rows.length === 0) {
+    if (!rows || rows.length === 0) {
       setPdfError('ไม่พบข้อมูลบท กรุณาเพิ่มอย่างน้อย 1 แถวก่อนส่งออก PDF');
       return;
     }
 
     setIsGeneratingPdf(true);
     setPdfError('');
-    setPdfProgress('กำลังเตรียมเรนเดอร์ฟอนต์ภาษาไทยและจัดหน้า...');
+    setPdfProgress('กำลังเตรียมเรนเดอร์ภาษาไทยคมชัด...');
 
     try {
-      const pageElements = document.querySelectorAll<HTMLElement>('.pdf-export-sheet');
-      if (!pageElements || pageElements.length === 0) {
+      // Ensure all web fonts are loaded
+      if (document.fonts) {
+        await document.fonts.ready;
+      }
+
+      // Small delay to ensure styles and DOM tree are settled
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      const container = pdfRenderRef.current;
+      if (!container) {
         throw new Error('ไม่พบองค์ประกอบหน้าสำหรับเรนเดอร์ PDF');
+      }
+
+      const pageElements = container.querySelectorAll<HTMLElement>('.pdf-export-sheet');
+      if (!pageElements || pageElements.length === 0) {
+        throw new Error('ไม่พบหน้าเอกสารสำหรับแปลงเป็น PDF');
       }
 
       const doc = new jsPDF({
@@ -134,7 +150,7 @@ export const ExportScriptModal: React.FC<ExportScriptModalProps> = ({
       });
 
       for (let i = 0; i < pageElements.length; i++) {
-        setPdfProgress(`กำลังประมวลผลหน้าที่ ${i + 1} จาก ${pageElements.length}...`);
+        setPdfProgress(`กำลังแปลงหน้าที่ ${i + 1} จาก ${pageElements.length}...`);
         const pageEl = pageElements[i];
 
         // Capture with html2canvas at 2x scale for crisp Thai typography
@@ -143,10 +159,12 @@ export const ExportScriptModal: React.FC<ExportScriptModalProps> = ({
           useCORS: true,
           backgroundColor: '#ffffff',
           logging: false,
-          allowTaint: true,
+          width: 794,
+          height: 1123,
+          windowWidth: 794,
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.96);
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
 
         if (i > 0) {
           doc.addPage('a4', 'portrait');
@@ -157,59 +175,260 @@ export const ExportScriptModal: React.FC<ExportScriptModalProps> = ({
       }
 
       setPdfProgress('กำลังบันทึกไฟล์ PDF...');
-      const fileName = `ScriptLab_3Column_Script_${Date.now()}.pdf`;
+      const cleanTitle = (scriptTitle || 'ScriptLab_Script').replace(/[^a-zA-Z0-9ก-๙_-]/g, '_');
+      const fileName = `${cleanTitle}_${Date.now()}.pdf`;
       doc.save(fileName);
 
       setPdfDownloaded(true);
-      setTimeout(() => setPdfDownloaded(false), 3000);
+      setTimeout(() => setPdfDownloaded(false), 3500);
     } catch (err: any) {
       console.error('PDF generation error:', err);
-      setPdfError('เกิดข้อผิดพลาดในการสร้าง PDF อัตโนมัติ กรุณาลองใช้ปุ่ม "พิมพ์ / บันทึกผ่านเบราว์เซอร์"');
+      setPdfError('เกิดข้อผิดพลาดในการสร้าง PDF อัตโนมัติ: ' + (err?.message || 'ระบบไม่สามารถประมวลผลได้'));
     } finally {
       setIsGeneratingPdf(false);
       setPdfProgress('');
     }
   };
 
-  // Native In-Browser Print to PDF (Zero popup blockers, full vector quality)
+  // Generate complete HTML string for the native print dialog
+  const generatePrintableHtml = (): string => {
+    const formattedDate = new Date().toLocaleDateString('th-TH', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+
+    const rowsHtml = rows.map((r) => `
+      <tr style="page-break-inside: avoid; break-inside: avoid; border-bottom: 1px solid #cbd5e1;">
+        <td style="width: 20%; padding: 10px; background-color: #f8fafc; border: 1px solid #cbd5e1; vertical-align: top;">
+          <div style="display: inline-block; background: #0f172a; color: #ffffff; font-weight: 800; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-bottom: 4px;">
+            ฉาก 0${r.sequenceNumber}
+          </div>
+          <div style="font-weight: 700; color: #0f172a; font-size: 12px; margin-bottom: 2px;">
+            ${r.phaseName || 'ฉากทั่วไป'}
+          </div>
+          <div style="display: inline-block; background: #fef3c7; color: #92400e; font-weight: 700; font-size: 10px; padding: 1px 6px; border-radius: 4px; margin-bottom: 4px;">
+            [${r.shotType || 'WS'}]
+          </div>
+          <div style="font-family: monospace; font-size: 11px; color: #475569; font-weight: 600;">
+            ⏱️ ${r.timecode || '-'}
+          </div>
+        </td>
+
+        <td style="width: 40%; padding: 10px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.5; color: #0f172a;">
+          <div style="font-size: 12px; font-weight: 500; white-space: pre-wrap;">
+            ${r.visualDescription || '(ไม่มีคำบรรยายภาพ)'}
+          </div>
+          ${r.visualGraphicNote ? `
+            <div style="margin-top: 8px; padding: 6px 8px; background: #eff6ff; border-left: 3px solid #3b82f6; border-radius: 0 4px 4px 0; font-size: 11px; color: #1e40af;">
+              <strong style="display: block; font-size: 10px; text-transform: uppercase;">🎨 ข้อความบนจอ / กราฟิก:</strong>
+              ${r.visualGraphicNote}
+            </div>
+          ` : ''}
+        </td>
+
+        <td style="width: 40%; padding: 10px; border: 1px solid #cbd5e1; vertical-align: top; line-height: 1.5; color: #0f172a;">
+          <div style="padding: 8px 10px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; margin-bottom: 6px;">
+            <div style="font-weight: 700; font-size: 10px; color: #065f46; text-transform: uppercase; margin-bottom: 3px;">
+              🎙️ เสียงบรรยาย / บทพูด (VO):
+            </div>
+            <div style="font-size: 12px; font-weight: 600; color: #0f172a; font-style: italic;">
+              "${r.audioVoiceover || '-'}"
+            </div>
+          </div>
+          ${r.audioSfx ? `
+            <div style="font-size: 11px; color: #b45309; font-weight: 600; margin-top: 4px;">
+              🔊 SFX: ${r.audioSfx}
+            </div>
+          ` : ''}
+          ${r.audioBgm ? `
+            <div style="font-size: 11px; color: #7e22ce; font-weight: 600; margin-top: 2px;">
+              🎵 BGM: ${r.audioBgm}
+            </div>
+          ` : ''}
+        </td>
+      </tr>
+    `).join('');
+
+    return `<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <title>${scriptTitle} - ScriptLab Production Script</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 12mm 15mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body {
+      margin: 0;
+      padding: 10px;
+      font-family: 'Prompt', 'Sarabun', 'Noto Sans Thai', sans-serif;
+      color: #0f172a;
+      background: #ffffff;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .header-box {
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 12px;
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .badge {
+      display: inline-block;
+      background: #f59e0b;
+      color: #ffffff;
+      font-size: 9px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0;
+    }
+    .subtitle {
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 600;
+    }
+    .meta-box {
+      text-align: right;
+      font-size: 11px;
+      color: #475569;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    th {
+      background-color: #f1f5f9;
+      color: #0f172a;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 8px 10px;
+      text-align: left;
+      border: 1px solid #cbd5e1;
+    }
+    .footer {
+      margin-top: 20px;
+      border-top: 1px solid #cbd5e1;
+      padding-top: 8px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <div class="header-box">
+    <div>
+      <div class="badge">SCRIPTLAB · PRODUCTION SPECIFICATION SHEET</div>
+      <h1 class="title">${scriptTitle}</h1>
+      <div class="subtitle">โครงสร้างบทวิดีโอ 3 คอลัมน์มาตรฐานสากล (Audio/Visual Script)</div>
+    </div>
+    <div class="meta-box">
+      <div><strong>จำนวนฉาก:</strong> ${rows.length} ฉาก</div>
+      <div><strong>วันที่:</strong> ${formattedDate}</div>
+      <div style="color: #059669; font-weight: 700; margin-top: 2px;">✓ พร้อมสำหรับการถ่ายทำจริง</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 20%;">1. ลำดับ / เวลา / ช็อต</th>
+        <th style="width: 40%;">2. คำบรรยายภาพ & มุมกล้อง (Visual)</th>
+        <th style="width: 40%;">3. เสียงพากย์ & SFX/BGM (Audio)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rowsHtml}
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <div>ScriptLab · สื่อมัลติมีเดียเพื่อการศึกษาและการเรียนรู้การเขียนบทภาพยนตร์และวิดีโอ</div>
+    <div>พิมพ์เมื่อ: ${formattedDate}</div>
+  </div>
+</body>
+</html>`;
+  };
+
+  // Robust Native Print: Uses a standalone isolated iframe to guarantee all content renders without popup blockers or app CSS collisions
   const handleNativePrint = () => {
-    window.print();
+    if (!rows || rows.length === 0) {
+      setPdfError('ไม่พบข้อมูลบท กรุณาเพิ่มแถวในห้องฝึกเขียนบทก่อน');
+      return;
+    }
+
+    setPdfProgress('กำลังเปิดหน้าต่างพิมพ์บท...');
+    setPdfError('');
+
+    try {
+      let iframe = document.getElementById('scriptlab-print-frame') as HTMLIFrameElement;
+      if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'scriptlab-print-frame';
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '1px';
+        iframe.style.height = '1px';
+        iframe.style.border = '0';
+        iframe.style.opacity = '0';
+        iframe.style.pointerEvents = 'none';
+        document.body.appendChild(iframe);
+      }
+
+      const frameDoc = iframe.contentWindow?.document;
+      if (!frameDoc) {
+        window.print();
+        return;
+      }
+
+      const printHtml = generatePrintableHtml();
+
+      frameDoc.open();
+      frameDoc.write(printHtml);
+      frameDoc.close();
+
+      // Give browser time to load fonts & parse styles, then trigger print
+      setTimeout(() => {
+        setPdfProgress('');
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        } catch (e) {
+          // Fallback to window.print if iframe print restricted
+          window.print();
+        }
+      }, 500);
+    } catch (err: any) {
+      console.error('Print error:', err);
+      window.print();
+    }
   };
 
   return (
     <>
-      {/* Print CSS styles to isolate only the printable script sheet during window.print() */}
-      <style>{`
-        @media print {
-          body * {
-            visibility: hidden !important;
-          }
-          #printable-script-container,
-          #printable-script-container * {
-            visibility: visible !important;
-          }
-          #printable-script-container {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-            z-index: 999999 !important;
-          }
-          .pdf-export-sheet {
-            page-break-after: always !important;
-            break-after: page !important;
-            box-shadow: none !important;
-            margin-bottom: 0 !important;
-            border: none !important;
-            width: 100% !important;
-            min-height: 100vh !important;
-          }
-        }
-      `}</style>
-
       {/* Main Modal Dialog */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/75 backdrop-blur-xs animate-fade-in overflow-y-auto">
         <div 
@@ -226,11 +445,11 @@ export const ExportScriptModal: React.FC<ExportScriptModalProps> = ({
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <span>ส่งออกบทเรียน (Export Production Script)</span>
                   <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/70 px-2 py-0.5 rounded-full">
-                    ภาษาไทย 100%
+                    {rows.length} ฉากพร้อมส่งออก
                   </span>
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  ดาวน์โหลดไฟล์ PDF ภาษาไทยคมชัดอ่านออก 100% หรือไฟล์ข้อความสำหรับนำไปถ่ายทำจริง
+                  ดาวน์โหลดไฟล์ PDF ภาษาไทยคมชัดอ่านออก 100% หรือสั่งพิมพ์เป็นใบงานกองถ่ายได้ทันที
                 </p>
               </div>
             </div>
@@ -255,7 +474,7 @@ export const ExportScriptModal: React.FC<ExportScriptModalProps> = ({
               }`}
             >
               <Download className="w-4 h-4" />
-              <span>ตัวเลือกการส่งออกไฟล์</span>
+              <span>ปุ่มดาวน์โหลดและสั่งพิมพ์</span>
             </button>
             <button
               onClick={() => setActiveTab('preview')}
@@ -266,7 +485,7 @@ export const ExportScriptModal: React.FC<ExportScriptModalProps> = ({
               }`}
             >
               <Eye className="w-4 h-4" />
-              <span>ดูตัวอย่างเอกสารจริงก่อนพิมพ์ ({totalPages} หน้า)</span>
+              <span>ดูตัวอย่างหน้ากระดาษ PDF ({totalPages} หน้า A4)</span>
             </button>
           </div>
 
@@ -275,7 +494,7 @@ export const ExportScriptModal: React.FC<ExportScriptModalProps> = ({
             {/* TAB 1: Export Options */}
             {activeTab === 'export' && (
               <div className="space-y-4">
-                {/* PDF Status / Error Alert */}
+                {/* PDF Status / Progress Notification */}
                 {pdfProgress && (
                   <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs flex items-center gap-2.5 animate-pulse">
                     <Loader2 className="w-4 h-4 animate-spin shrink-0 text-amber-600" />
@@ -283,13 +502,15 @@ export const ExportScriptModal: React.FC<ExportScriptModalProps> = ({
                   </div>
                 )}
 
+                {/* PDF Error Notification */}
                 {pdfError && (
                   <div className="p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs flex items-center gap-2.5">
-                    <span className="font-bold text-base">⚠️</span>
-                    <span>{pdfError}</span>
+                    <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                    <span className="font-semibold">{pdfError}</span>
                   </div>
                 )}
 
+                {/* PDF Downloaded Success */}
                 {pdfDownloaded && (
                   <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-2.5">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -298,7 +519,7 @@ export const ExportScriptModal: React.FC<ExportScriptModalProps> = ({
                 )}
 
                 {/* Option 1: PDF Document (Primary Option) */}
-                <div className="p-5 rounded-2xl border-2 border-amber-400/60 dark:border-amber-600/60 bg-gradient-to-br from-amber-50/50 via-white to-amber-50/30 dark:from-slate-850 dark:via-slate-800 dark:to-slate-850 space-y-4 shadow-xs">
+                <div className="p-5 rounded-2xl border-2 border-amber-400/70 dark:border-amber-500/60 bg-gradient-to-br from-amber-50/50 via-white to-amber-50/30 dark:from-slate-850 dark:via-slate-800 dark:to-slate-850 space-y-4 shadow-xs">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-red-500 text-white flex items-center justify-center shadow-md shadow-red-500/20 shrink-0">
@@ -307,10 +528,10 @@ export const ExportScriptModal: React.FC<ExportScriptModalProps> = ({
                       <div>
                         <div className="flex items-center gap-2">
                           <h4 className="font-bold text-slate-900 dark:text-white text-base">
-                            ไฟล์เอกสาร PDF (Production Call Sheet)
+                            ไฟล์เอกสาร PDF & สั่งพิมพ์ (Production Call Sheet)
                           </h4>
                           <span className="text-[10px] font-extrabold text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-950/80 px-2 py-0.5 rounded-md uppercase">
-                            แนะนำ
+                            ภาษาไทย 100%
                           </span>
                         </div>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -320,7 +541,7 @@ export const ExportScriptModal: React.FC<ExportScriptModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Highlights */}
+                  {/* Highlights Checklist */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900/60 p-3 rounded-xl border border-amber-200/60 dark:border-slate-700">
                     <div className="flex items-center gap-1.5">
                       <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
@@ -336,8 +557,9 @@ export const ExportScriptModal: React.FC<ExportScriptModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Actions Buttons for PDF */}
+                  {/* Action Buttons for PDF & Print */}
                   <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
+                    {/* Primary Button: Download PDF File */}
                     <button
                       onClick={handleDownloadPdf}
                       disabled={isGeneratingPdf}
@@ -346,7 +568,7 @@ export const ExportScriptModal: React.FC<ExportScriptModalProps> = ({
                       {isGeneratingPdf ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>กำลังสร้างไฟล์ PDF...</span>
+                          <span>กำลังสร้างไฟล์ PDF ภาษาไทย...</span>
                         </>
                       ) : (
                         <>
@@ -356,9 +578,10 @@ export const ExportScriptModal: React.FC<ExportScriptModalProps> = ({
                       )}
                     </button>
 
+                    {/* Secondary Button: Native Browser Print to PDF */}
                     <button
                       onClick={handleNativePrint}
-                      className="w-full sm:w-auto py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap"
+                      className="w-full sm:w-auto py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap shadow-xs"
                       title="เปิดหน้าต่างสั่งพิมพ์ของเบราว์เซอร์ เพื่อพิมพ์ลงกระดาษหรือบันทึกเป็น PDF"
                     >
                       <Printer className="w-4 h-4 text-amber-400" />
@@ -420,8 +643,7 @@ export const ExportScriptModal: React.FC<ExportScriptModalProps> = ({
                 <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-start gap-3 text-xs text-slate-600 dark:text-slate-300">
                   <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                   <p className="leading-relaxed">
-                    ระบบได้แก้ไขปัญหาฟอนต์ภาษาไทยเรียบร้อย โดยใช้เอนจินเรนเดอร์ฟอนต์คมชัดระดับ 2x (High-DPI) 
-                    ทำให้ข้อความภาษาไทย สระ วรรณยุกต์ และคำสั่งภาพ/เสียงพากย์ใน PDF อ่านออกชัดเจน 100% พร้อมใช้งานในกองถ่ายจริงทันที
+                    ระบบได้รับการปรับปรุงและแก้ไขปัญหาสั่งพิมพ์ว่างเปล่าเรียบร้อยแล้ว: ตอนนี้เมื่อกด <strong>"พิมพ์ / บันทึกผ่านเบราว์เซอร์"</strong> หน้าพิมพ์จะโหลดบทครบทุกฉากและตัวหนังสือภาษาไทยขึ้น 100% และเมื่อกด <strong>"ดาวน์โหลดไฟล์ PDF"</strong> ระบบจะบันทึกไฟล์ PDF ความละเอียดสูงให้อ่านออกทันที
                   </p>
                 </div>
               </div>
@@ -433,20 +655,20 @@ export const ExportScriptModal: React.FC<ExportScriptModalProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
                     <Eye className="w-4 h-4 text-amber-500" />
-                    <span>ตัวอย่างเอกสารที่จะถูกบันทึกเป็น PDF ({totalPages} หน้า A4)</span>
+                    <span>ตัวอย่างเอกสารจริงที่จะบันทึกเป็น PDF ({totalPages} หน้า A4)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleDownloadPdf}
                       disabled={isGeneratingPdf}
-                      className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                      className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>ดาวน์โหลด PDF ตอนนี้</span>
                     </button>
                     <button
                       onClick={handleNativePrint}
-                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                      className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
                     >
                       <Printer className="w-3.5 h-3.5 text-amber-400" />
                       <span>สั่งพิมพ์</span>
@@ -491,11 +713,20 @@ export const ExportScriptModal: React.FC<ExportScriptModalProps> = ({
         </div>
       </div>
 
-      {/* Offscreen / Printable Container: This is the DOM tree used by html2canvas & window.print() */}
+      {/* Offscreen Render Container: Placed at z-index: -50 with full opacity so html2canvas captures 100% visible pixels without negative coordinate glitches */}
       <div 
-        id="printable-script-container"
-        ref={printContainerRef}
-        className={activeTab === 'preview' ? 'hidden' : 'fixed -left-[9999px] top-0 pointer-events-none opacity-0'}
+        ref={pdfRenderRef}
+        style={{
+          position: 'fixed',
+          left: 0,
+          top: 0,
+          zIndex: -50,
+          pointerEvents: 'none',
+          opacity: 1,
+          width: '794px',
+          overflow: 'hidden',
+          backgroundColor: '#ffffff',
+        }}
         aria-hidden="true"
       >
         {pages.map((pageRows, pageIdx) => (
@@ -592,16 +823,16 @@ const RenderPdfSheet: React.FC<RenderPdfSheetProps> = ({
               <td className="p-3 bg-slate-50/70 border-l border-r border-slate-300 align-top">
                 <div className="space-y-1.5">
                   <div className="inline-block bg-slate-800 text-white font-extrabold px-2 py-0.5 rounded text-[11px]">
-                    ฉาก 0{row.sequenceNumber}
+                    ฉาก 0${row.sequenceNumber}
                   </div>
                   <div className="font-bold text-slate-900 text-xs">
-                    {row.phaseName}
+                    {row.phaseName || 'ฉากทั่วไป'}
                   </div>
                   <div className="inline-block px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-bold text-[10px]">
-                    [{row.shotType}]
+                    [{row.shotType || 'WS'}]
                   </div>
                   <div className="font-mono text-[11px] text-slate-600 font-semibold mt-1">
-                    ⏱️ {row.timecode}
+                    ⏱️ {row.timecode || '-'}
                   </div>
                 </div>
               </td>
@@ -609,7 +840,7 @@ const RenderPdfSheet: React.FC<RenderPdfSheetProps> = ({
               {/* Column 2: Visual & Camera Action */}
               <td className="p-3 border-r border-slate-300 align-top leading-relaxed text-slate-900">
                 <div className="font-medium whitespace-pre-wrap text-xs">
-                  {row.visualDescription}
+                  {row.visualDescription || '(ไม่มีคำบรรยายภาพ)'}
                 </div>
                 {row.visualGraphicNote && (
                   <div className="mt-2.5 p-2 bg-blue-50/80 border-l-2 border-blue-500 rounded-r text-[11px] text-blue-900 font-medium">
@@ -627,7 +858,7 @@ const RenderPdfSheet: React.FC<RenderPdfSheetProps> = ({
                       🎙️ เสียงบรรยาย / บทพูด (VO):
                     </span>
                     <p className="text-xs font-semibold text-slate-900 leading-normal italic">
-                      "{row.audioVoiceover}"
+                      "{row.audioVoiceover || '-'}"
                     </p>
                   </div>
 
