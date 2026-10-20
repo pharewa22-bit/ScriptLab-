@@ -473,6 +473,16 @@ export const StudioView: React.FC<StudioViewProps> = ({
             <span>ส่งออก CSV</span>
           </button>
 
+          {/* Export PDF / Text Production Sheet Button */}
+          <button
+            onClick={() => setIsExportModalOpen(true)}
+            className="px-3.5 py-2 bg-slate-900 dark:bg-amber-500 text-white dark:text-slate-950 hover:bg-slate-800 dark:hover:bg-amber-400 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+            title="ส่งออกบทเรียนเป็นไฟล์เอกสาร PDF หรือ Text สำหรับนำไปถ่ายทำจริง"
+          >
+            <FileDown className="w-3.5 h-3.5 text-amber-400 dark:text-slate-950" />
+            <span>ส่งออก PDF / Text</span>
+          </button>
+
           {/* AI Review Quick Button */}
           <button
             onClick={() => setIsAiReviewOpen(true)}
