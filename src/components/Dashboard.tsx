@@ -21,7 +21,8 @@ import {
   Video,
   Mic,
   BookMarked,
-  Mail
+  Mail,
+  Clapperboard
 } from 'lucide-react';
 import { Lesson, NavigationTab } from '../types/script';
 import { audioEngine } from '../utils/audioPlayer';
@@ -164,17 +165,112 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
 
-          {/* Screenwriting Golden Quote Card */}
-          <div className="w-full lg:w-80 p-5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md space-y-3">
-            <div className="flex items-center gap-2 text-amber-400 text-xs font-semibold uppercase tracking-wider">
-              <Award className="w-4 h-4" />
-              <span>แรงบันดาลใจวันนี้</span>
+          {/* Interactive Floating Pen & Screenwriting Workshop Widget */}
+          <div className="w-full lg:w-96 flex flex-col items-center select-none shrink-0">
+            {/* The Floating Pen Interactive Area */}
+            <div 
+              onClick={() => {
+                audioEngine.playChime(680, 'sine', 0.2);
+                onNavigate('studio');
+              }}
+              className="relative w-full h-48 sm:h-52 flex items-center justify-center cursor-pointer group"
+              title="คลิกที่ปากกาเพื่อเริ่มจรดปากกาเขียนบททันที!"
+            >
+              {/* Floating Pen Ambient Glow */}
+              <div className="absolute w-40 h-40 rounded-full bg-amber-500/15 blur-2xl animate-pulse-glow" />
+
+              {/* Floating Screenplay Badge 1 (Top Left) */}
+              <div className="absolute top-1 left-1 sm:left-2 animate-float-badge px-2.5 py-1 rounded-lg bg-slate-900/85 border border-slate-700/80 backdrop-blur-md text-[10px] font-mono text-amber-300 flex items-center gap-1.5 shadow-lg shadow-black/40 group-hover:border-amber-400 transition-colors">
+                <Clapperboard className="w-3 h-3 text-amber-400" />
+                <span>SCENE 01: INT.</span>
+              </div>
+
+              {/* Floating Screenplay Badge 2 (Bottom Right) */}
+              <div className="absolute bottom-2 right-1 sm:right-2 animate-float-badge px-2.5 py-1 rounded-lg bg-slate-900/85 border border-slate-700/80 backdrop-blur-md text-[10px] font-mono text-emerald-300 flex items-center gap-1.5 shadow-lg shadow-black/40 group-hover:border-emerald-400 transition-colors" style={{ animationDelay: '1.2s' }}>
+                <Sparkles className="w-3 h-3 text-emerald-400" />
+                <span>3-COLUMN AV SCRIPT</span>
+              </div>
+
+              {/* Floating Screenplay Badge 3 (Top Right) */}
+              <div className="absolute top-2 right-2 animate-float-badge px-2 py-0.5 rounded-full bg-orange-500/20 border border-orange-500/40 text-[9px] font-bold text-orange-300 shadow-sm" style={{ animationDelay: '0.6s' }}>
+                [WS] WIDE SHOT
+              </div>
+
+              {/* Golden Fountain Pen Graphic Object */}
+              <div className="relative transform animate-float-pen group-hover:scale-110 transition-transform duration-300">
+                {/* Ink Glow Pulsing Aura at Nib */}
+                <div className="absolute -bottom-1 -left-1 w-6 h-6 rounded-full bg-amber-400/80 blur-xs animate-ping" />
+                <div className="absolute -bottom-2 -left-2 w-8 h-8 rounded-full bg-orange-500/40 blur-md" />
+
+                {/* Luxury Golden Fountain Pen SVG */}
+                <svg 
+                  width="145" 
+                  height="145" 
+                  viewBox="0 0 160 160" 
+                  fill="none" 
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="filter drop-shadow-[0_15px_25px_rgba(245,158,11,0.4)]"
+                >
+                  <defs>
+                    <linearGradient id="penBodyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#1e293b" />
+                      <stop offset="40%" stopColor="#334155" />
+                      <stop offset="70%" stopColor="#0f172a" />
+                      <stop offset="100%" stopColor="#1e293b" />
+                    </linearGradient>
+                    <linearGradient id="goldNibGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#fef08a" />
+                      <stop offset="30%" stopColor="#f59e0b" />
+                      <stop offset="70%" stopColor="#d97706" />
+                      <stop offset="100%" stopColor="#b45309" />
+                    </linearGradient>
+                    <linearGradient id="goldRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#fef3c7" />
+                      <stop offset="50%" stopColor="#f59e0b" />
+                      <stop offset="100%" stopColor="#78350f" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Fountain Pen Cap & Upper Barrel */}
+                  <path d="M125 25 L145 45 L95 95 L75 75 Z" fill="url(#penBodyGrad)" stroke="#475569" strokeWidth="1.5" />
+                  {/* Golden Clip */}
+                  <path d="M132 28 L142 38 L108 72 L104 68 Z" fill="url(#goldRingGrad)" />
+                  {/* Gold Ring Band */}
+                  <path d="M96 74 L102 80 L94 88 L88 82 Z" fill="url(#goldRingGrad)" />
+                  {/* Grip Section */}
+                  <path d="M88 82 L94 88 L68 114 L62 108 Z" fill="#0f172a" stroke="#f59e0b" strokeWidth="1" />
+                  {/* Luxury Gold Nib */}
+                  <path d="M63 109 L69 115 L42 142 L34 140 L36 132 Z" fill="url(#goldNibGrad)" stroke="#fef08a" strokeWidth="1" />
+                  {/* Nib slit & breathing hole */}
+                  <path d="M48 126 L36 138" stroke="#78350f" strokeWidth="1.5" strokeLinecap="round" />
+                  <circle cx="50" cy="124" r="2" fill="#78350f" />
+
+                  {/* Magic Golden Ink Sparkles emitting from nib */}
+                  <circle cx="28" cy="144" r="3" fill="#fbbf24" className="animate-pulse" />
+                  <circle cx="20" cy="150" r="1.5" fill="#fde68a" />
+                  <circle cx="35" cy="152" r="2" fill="#f59e0b" />
+                </svg>
+              </div>
+
+              {/* Floating Action Tooltip Tag */}
+              <div className="absolute bottom-0 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[11px] font-semibold flex items-center gap-1.5 shadow-md backdrop-blur-xs group-hover:bg-amber-500 group-hover:text-slate-950 transition-all">
+                <Sparkles className="w-3 h-3 text-amber-400 group-hover:text-slate-950" />
+                <span>คลิกที่ปากกาเพื่อเริ่มเขียนบท</span>
+              </div>
             </div>
-            <p className="text-slate-200 text-sm italic font-screenplay leading-relaxed">
-              "A screenplay is not a novel. It is a blueprint for visual emotion and dramatic action."
-            </p>
-            <div className="text-xs text-slate-400">
-              — Syd Field, ปรมาจารย์โครงสร้างบทภาพยนตร์
+
+            {/* Inspiring Screenwriting Quote Card below */}
+            <div className="w-full mt-2 p-3.5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md space-y-1.5">
+              <div className="flex items-center justify-between text-amber-400 text-xs font-semibold uppercase tracking-wider">
+                <span className="flex items-center gap-1.5">
+                  <Award className="w-3.5 h-3.5" />
+                  <span>แรงบันดาลใจวันนี้</span>
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono">Syd Field</span>
+              </div>
+              <p className="text-slate-200 text-xs italic font-screenplay leading-relaxed">
+                "A screenplay is not a novel. It is a blueprint for visual emotion and dramatic action."
+              </p>
             </div>
           </div>
         </div>

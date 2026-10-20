@@ -76,3 +76,46 @@ html.dark body {
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
+
+/* Floating Pen and Creative Ink Animations */
+@keyframes floatPen {
+  0%, 100% {
+    transform: translateY(0px) rotate(-12deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(-6deg);
+  }
+}
+
+@keyframes floatBadge {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+}
+
+.animate-float-pen {
+  animation: floatPen 4s ease-in-out infinite;
+}
+
+.animate-float-badge {
+  animation: floatBadge 3s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
