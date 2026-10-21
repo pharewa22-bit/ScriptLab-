@@ -19,7 +19,10 @@ import {
   Moon,
   Columns3,
   Mail,
-  BookMarked
+  BookMarked,
+  RefreshCw,
+  RotateCcw,
+  CheckCircle
 } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
@@ -32,15 +35,54 @@ import { ReferencesView } from './components/ReferencesView';
 import { INITIAL_LESSONS } from './data/learningContent';
 import { CREATOR_INFO } from './data/referencesData';
 import { Lesson, NavigationTab } from './types/script';
+import { getLearnerLevel } from './utils/levelUtils';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<NavigationTab>('dashboard');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState<boolean>(true);
-  const [lessons, setLessons] = useState<Lesson[]>(INITIAL_LESSONS);
+  
+  // Lessons state with localStorage persistence
+  const [lessons, setLessons] = useState<Lesson[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('scriptlab_lessons');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        }
+      } catch {
+        // fallback
+      }
+    }
+    return INITIAL_LESSONS;
+  });
+
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>('lesson-1');
   const [studioDraft, setStudioDraft] = useState<string>('');
   const [reviewerDraft, setReviewerDraft] = useState<string>('');
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [showResetModal, setShowResetModal] = useState<boolean>(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
+
+  // Sync lessons to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('scriptlab_lessons', JSON.stringify(lessons));
+    } catch {
+      // quota or private browsing fallback
+    }
+  }, [lessons]);
+
+  // Toast notification timer
+  const showToastMessage = (message: string, type: 'success' | 'info' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast(null);
+    }, 3200);
+  };
 
   // Close mobile sidebar on Escape key
   useEffect(() => {
@@ -84,10 +126,12 @@ export default function App() {
     }
   };
 
-  // Calculate overall learning progress
+  // Calculate overall learning progress and dynamic learner level
   const totalWeight = lessons.length * 100;
   const currentWeight = lessons.reduce((acc, l) => acc + l.progressPercent, 0);
   const overallProgressPercent = Math.round((currentWeight / totalWeight) * 100);
+  const learnerLevel = getLearnerLevel(overallProgressPercent);
+  const streakDays = overallProgressPercent === 0 ? 1 : Math.min(5, Math.max(1, Math.ceil(overallProgressPercent / 20)));
 
   // Lesson Quiz Completion Handler
   const handleCompleteQuiz = (lessonId: string) => {
@@ -107,6 +151,65 @@ export default function App() {
         return l;
       }));
     }
+  };
+
+  // Progress refresh chime sound (Web Audio API)
+  const playRefreshChime = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+      osc.frequency.exponentialRampToValueAtTime(783.99, audioCtx.currentTime + 0.15); // G5
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.35);
+    } catch {
+      // Audio context fallback
+    }
+  };
+
+  // Refresh progress action
+  const handleRefreshProgress = () => {
+    setIsRefreshing(true);
+    playRefreshChime();
+    setTimeout(() => {
+      try {
+        const saved = localStorage.getItem('scriptlab_lessons');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setLessons(parsed);
+          }
+        }
+      } catch {
+        // ignore
+      }
+      setIsRefreshing(false);
+      const updatedLevel = getLearnerLevel(overallProgressPercent);
+      showToastMessage(`รีเฟรชความคืบหน้ารวมสำเร็จ (${overallProgressPercent}% · ${updatedLevel.levelName})`, 'success');
+    }, 450);
+  };
+
+  // Reset progress action
+  const handleResetProgressRequest = () => {
+    setShowResetModal(true);
+  };
+
+  const handleConfirmResetProgress = () => {
+    const resetLessons = INITIAL_LESSONS.map(l => ({ ...l, completed: false, progressPercent: 0 }));
+    setLessons(resetLessons);
+    try {
+      localStorage.setItem('scriptlab_lessons', JSON.stringify(resetLessons));
+    } catch {
+      // ignore
+    }
+    setShowResetModal(false);
+    showToastMessage('รีเซ็ตความคืบหน้าเป็น 0% (กลับสู่ผู้เรียนระดับ 1: มือใหม่) สำเร็จแล้ว', 'info');
   };
 
   // Navigations with data transfer
@@ -225,7 +328,7 @@ export default function App() {
 
           <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/80 text-amber-800 dark:text-amber-300 text-xs font-semibold">
             <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-            <span>Streak 5 วัน</span>
+            <span>{learnerLevel.levelName} · Streak {streakDays} วัน</span>
           </div>
 
           <button
@@ -252,6 +355,9 @@ export default function App() {
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
           isDesktopOpen={isDesktopSidebarOpen}
           onToggleDesktop={() => setIsDesktopSidebarOpen(prev => !prev)}
+          onRefreshProgress={handleRefreshProgress}
+          onResetProgress={handleResetProgressRequest}
+          isRefreshing={isRefreshing}
         />
 
         {/* Center Main Stage Area (with responsive padding left for desktop sidebar) */}
@@ -264,6 +370,9 @@ export default function App() {
                 onNavigate={setCurrentTab}
                 onOpenLesson={handleOpenLesson}
                 onStartExercise={handleStartExercise}
+                onRefreshProgress={handleRefreshProgress}
+                onResetProgress={handleResetProgressRequest}
+                isRefreshing={isRefreshing}
               />
             )}
 
@@ -352,6 +461,45 @@ export default function App() {
           </footer>
         </main>
       </div>
+
+      {/* In-app Reset Confirmation Modal (Strictly avoids window.confirm/window.alert) */}
+      {showResetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center">
+            <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
+              <RotateCcw className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">ต้องการรีเซ็ตความคืบหน้าใช่หรือไม่?</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+                ระดับผู้เรียนจะถูกรีเซ็ตกลับไปเป็น <span className="font-bold text-sky-600 dark:text-sky-400">ผู้เรียนระดับ 1 (Beginner Screenwriter)</span> และคะแนนความคืบหน้าจะเริ่มต้นใหม่ที่ 0%
+              </p>
+            </div>
+            <div className="flex gap-2.5 pt-2">
+              <button
+                onClick={() => setShowResetModal(false)}
+                className="flex-1 px-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={handleConfirmResetProgress}
+                className="flex-1 px-4 py-2 text-xs font-semibold rounded-xl bg-rose-600 hover:bg-rose-700 text-white transition-colors shadow-xs cursor-pointer font-bold"
+              >
+                ยืนยันรีเซ็ตเป็น 0%
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification Bar */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-slate-900/95 dark:bg-slate-100 text-white dark:text-slate-900 shadow-2xl text-xs font-semibold border border-slate-700/60 dark:border-slate-300 animate-in slide-in-from-bottom-3 duration-200">
+          <CheckCircle className="w-4 h-4 text-emerald-400 dark:text-emerald-600 shrink-0" />
+          <span>{toast.message}</span>
+        </div>
+      )}
     </div>
   );
 }

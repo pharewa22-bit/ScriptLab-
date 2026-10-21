@@ -22,11 +22,14 @@ import {
   Mic,
   BookMarked,
   Mail,
-  Clapperboard
+  Clapperboard,
+  RefreshCw,
+  RotateCcw
 } from 'lucide-react';
 import { Lesson, NavigationTab } from '../types/script';
 import { audioEngine } from '../utils/audioPlayer';
 import { CREATOR_INFO } from '../data/referencesData';
+import { getLearnerLevel } from '../utils/levelUtils';
 
 interface DashboardProps {
   lessons: Lesson[];
@@ -34,6 +37,9 @@ interface DashboardProps {
   onNavigate: (tab: NavigationTab) => void;
   onOpenLesson: (lessonId: string) => void;
   onStartExercise: (promptText: string) => void;
+  onRefreshProgress?: () => void;
+  onResetProgress?: () => void;
+  isRefreshing?: boolean;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -42,7 +48,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onNavigate,
   onOpenLesson,
   onStartExercise,
+  onRefreshProgress,
+  onResetProgress,
+  isRefreshing = false,
 }) => {
+  const learnerLevel = getLearnerLevel(overallProgress);
+
   // Real Audio playback for multimedia masterclass podcast
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0); // seconds
@@ -326,12 +337,34 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="text-right">
+          <div className="flex flex-wrap items-center gap-3">
+            {onRefreshProgress && (
+              <button
+                onClick={onRefreshProgress}
+                className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-amber-50 dark:bg-slate-750 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 hover:text-amber-700 dark:hover:text-amber-300 border border-slate-200 dark:border-slate-600 transition-all flex items-center gap-1.5 text-xs font-semibold shadow-xs cursor-pointer active:scale-95"
+                title="รีเฟรชและอัปเดตสถิติความคืบหน้าการเรียนรู้"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-amber-500' : ''}`} />
+                <span>รีเฟรชความคืบหน้า</span>
+              </button>
+            )}
+
+            {onResetProgress && (
+              <button
+                onClick={onResetProgress}
+                className="px-2.5 py-2 rounded-xl bg-slate-50 hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-rose-950/40 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-1 text-xs cursor-pointer"
+                title="รีเซ็ตความคืบหน้าการเรียนรู้ทั้งหมดเป็น 0%"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">รีเซ็ต</span>
+              </button>
+            )}
+
+            <div className="text-right pl-2 sm:border-l border-slate-200 dark:border-slate-700">
               <span className="text-xs text-slate-400 block">สำเร็จแล้ว</span>
               <span className="text-lg font-bold text-slate-900 dark:text-white tabular-nums">{completedCount} จาก {lessons.length} บท</span>
             </div>
-            <div className="w-16 h-16 rounded-full bg-amber-50 dark:bg-slate-900 border-4 border-amber-500 flex items-center justify-center font-bold text-slate-900 dark:text-white text-sm tabular-nums shadow-xs">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-amber-50 dark:bg-slate-900 border-4 border-amber-500 flex items-center justify-center font-bold text-slate-900 dark:text-white text-sm tabular-nums shadow-xs shrink-0">
               {overallProgress}%
             </div>
           </div>
@@ -349,10 +382,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
               style={{ width: `${overallProgress}%` }}
             />
           </div>
-          <div className="flex justify-between text-[11px] text-slate-400 dark:text-slate-500">
-            <span>ระดับ 1: พื้นฐาน</span>
-            <span>ระดับ 2: ปานกลาง (ปัจจุบัน)</span>
-            <span>ระดับ 3: มืออาชีพ</span>
+          <div className="flex flex-wrap justify-between gap-1 text-[11px] text-slate-400 dark:text-slate-500 pt-1">
+            <span className={`transition-all ${learnerLevel.levelNumber === 1 ? 'font-bold text-sky-600 dark:text-sky-400 flex items-center gap-1' : ''}`}>
+              {learnerLevel.levelNumber === 1 && <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />}
+              ระดับ 1: พื้นฐาน {learnerLevel.levelNumber === 1 ? '(ปัจจุบัน)' : ''}
+            </span>
+            <span className={`transition-all ${learnerLevel.levelNumber === 2 ? 'font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1' : ''}`}>
+              {learnerLevel.levelNumber === 2 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+              ระดับ 2: ปานกลาง {learnerLevel.levelNumber === 2 ? '(ปัจจุบัน)' : ''}
+            </span>
+            <span className={`transition-all ${learnerLevel.levelNumber === 3 ? 'font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1' : ''}`}>
+              {learnerLevel.levelNumber === 3 && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />}
+              ระดับ 3: ขั้นสูง {learnerLevel.levelNumber === 3 ? '(ปัจจุบัน)' : ''}
+            </span>
+            <span className={`transition-all ${learnerLevel.levelNumber === 4 ? 'font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1' : ''}`}>
+              {learnerLevel.levelNumber === 4 && <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />}
+              ระดับ 4: มืออาชีพ {learnerLevel.levelNumber === 4 ? '(ปัจจุบัน)' : ''}
+            </span>
           </div>
         </div>
 
